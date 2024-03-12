@@ -1,0 +1,900 @@
+Program.Sub.ScreenSU.Start
+Gui.fMain..Create
+Gui.fMain..Caption("Consulting Time Sheet")
+Gui.fMain..Size(15375,9795)
+Gui.fMain..MinX(0)
+Gui.fMain..MinY(0)
+Gui.fMain..Position(0,0)
+Gui.fMain..BackColor(-2147483633)
+Gui.fMain..MousePointer(0)
+Gui.fMain..Event(UnLoad,fMain_UnLoad)
+Gui.fMain.picGSSLogo.Create(PictureBox)
+Gui.fMain.picGSSLogo.Size(4125,960)
+Gui.fMain.picGSSLogo.Position(5610,135)
+Gui.fMain.picGSSLogo.Anchor(1)
+Gui.fMain.ddlWeek.Create(DropDownList)
+Gui.fMain.ddlWeek.Size(3180,330)
+Gui.fMain.ddlWeek.Position(210,420)
+Gui.fMain.ddlWeek.Event(Click,LoadddlDay)
+Gui.fMain.ddlWeek.Anchor(5)
+Gui.fMain.lblWeek.Create(Label,"Week",True,1935,255,0,210,195,True,0,"Arial",8,-2147483633,0)
+Gui.fMain.lblDate.Create(Label,"Default Date",True,1935,255,0,210,825,True,0,"Arial",8,-2147483633,0)
+Gui.fMain.lblDate.Anchor(5)
+Gui.fMain.ddlDate.Create(DropDownList)
+Gui.fMain.ddlDate.Size(3180,330)
+Gui.fMain.ddlDate.Position(210,1050)
+Gui.fMain.ddlDate.Anchor(5)
+Gui.fMain.GsGcMain.Create(GsGridControl)
+Gui.fMain.GsGcMain.Size(14715,7080)
+Gui.fMain.GsGcMain.Position(210,1530)
+Gui.fMain.GsGcMain.Event(RowCellClick,GsGcMain_RowCellClick)
+Gui.fMain.GsGcMain.Event(CellValueChanged,GsGcMain_CellValueChanged)
+Gui.fMain.GsGcMain.Anchor(15)
+Gui.fMain.cmdSave.Create(Button)
+Gui.fMain.cmdSave.Size(1080,375)
+Gui.fMain.cmdSave.Position(13845,8745)
+Gui.fMain.cmdSave.Caption("Save")
+Gui.fMain.cmdSave.Event(Click,cmdSave_Click)
+Gui.fMain.cmdSave.Anchor(10)
+Gui.fMain.cmdExport.Create(Button)
+Gui.fMain.cmdExport.Size(1080,375)
+Gui.fMain.cmdExport.Position(12630,8745)
+Gui.fMain.cmdExport.Caption("Export")
+Gui.fMain.cmdExport.Event(Click,cmdExport_Click)
+Gui.fMain.cmdExport.Anchor(10)
+Gui.fMain.txtRevenueYTD.Create(TextBox,"",True,1725,300,0,13200,1035,False,1,"Arial",8,-2147483643,1)
+Gui.fMain.txtRevenueYTD.Locked(True)
+Gui.fMain.txtRevenueMTD.Create(TextBox,"",True,1725,300,0,13200,405,False,1,"Arial",8,-2147483643,1)
+Gui.fMain.txtRevenueMTD.Locked(True)
+Gui.fMain.lblRevenueMTD.Create(Label,"Revenue This Month",True,1605,255,0,13320,180,True,0,"Arial",8,-2147483633,0)
+Gui.fMain.lblRevenueYTD.Create(Label,"Revenue This Year",True,1530,255,0,13395,810,True,0,"Arial",8,-2147483633,0)
+Gui.fMain.txtRevenueMTD.Anchor(9)
+Gui.fMain.txtRevenueYTD.Anchor(9)
+Gui.fMain.lblRevenueMTD.Anchor(9)
+Gui.fMain.lblRevenueYTD.Anchor(9)
+Program.Sub.ScreenSU.End
+
+Variable.Global.bSaved.Declare(Boolean,True)
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+V.Local.sIcon.Declare(String)
+V.Local.sGssLogo.Declare
+
+F.Intrinsic.String.Build("{0}\ART\gss2.ico",V.Caller.GlobalDir,v.Local.sIcon)
+F.Intrinsic.String.Build("{0}\ART\GAB_GSS_Logo_Green_Dash.png",V.Caller.GlobalDir,V.Local.sGssLogo)
+Gui.fMain..Icon(V.Local.sIcon)
+Gui.fMain..Icon(V.Local.sIcon)
+Gui.fMain.picGSSLogo.Picture(V.Local.sGssLogo)
+
+F.Intrinsic.Control.CallSub(connect)
+F.Intrinsic.Control.CallSub(loaddtmain)
+F.Intrinsic.Control.CallSub(loadgvmain)
+F.Intrinsic.Control.CallSub(loadddlweek)
+F.Intrinsic.Control.CallSub(loadrevenue)
+
+Gui.fMain..Show
+
+Program.Sub.Main.End
+
+Program.Sub.Connect.Start
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+Program.Sub.Connect.End
+
+Program.Sub.Disconnect.Start
+F.ODBC.Connection!con.Close
+Program.Sub.Disconnect.End
+
+Program.Sub.fMain_UnLoad.Start
+V.Local.iRet.Declare
+
+F.Intrinsic.Control.If(V.Global.bSaved,=,False)
+	F.Intrinsic.UI.Msgbox("Do you want to save changes before exiting?","Consulting Time Sheet",3,V.Local.iRet)
+	F.Intrinsic.Control.SelectCase(V.Local.iRet)
+		F.Intrinsic.Control.Case(2)
+			'Cancel
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.Case(6)
+			'Yes
+			F.Intrinsic.Control.CallSub(cmdsave_click)
+		F.Intrinsic.Control.Case(7)
+			'No
+	F.Intrinsic.Control.EndSelect
+F.Intrinsic.Control.EndIf
+gui.fMain..Visible(0)
+F.Intrinsic.Control.CallSub(disconnect)
+F.Intrinsic.Control.End
+
+Program.Sub.fMain_UnLoad.End
+
+Program.Sub.LoadddlWeek.Start
+V.Local.bStop.Declare
+V.Local.dDate.Declare
+V.Local.iFor.Declare
+V.Local.sDate.Declare
+V.Local.sDay.Declare
+V.Local.sEndDate.Declare
+V.Local.sEndYear.Declare
+V.Local.sFirstDay.Declare
+V.Local.sList.Declare
+V.Local.sMonth.Declare
+V.Local.sNextYear.Declare
+V.Local.sSaturday.Declare
+V.Local.sSunday.Declare
+V.Local.sWeekNo.Declare
+V.Local.sYear.Declare
+
+'Get the four digit year
+F.Intrinsic.String.Format(V.Ambient.Date,"YYYY",V.Local.sYear)
+
+'Get the Sunday for the first day of the year
+'What day is 1/1
+F.Intrinsic.String.Concat("01/01/",V.Local.sYear,V.Local.sFirstDay)
+F.Intrinsic.Date.Weekday(V.Local.sFirstDay,V.Local.sFirstDay)
+F.Intrinsic.String.Concat("1/1/",V.Local.sYear,V.Local.sSunday)
+
+F.Intrinsic.Control.SelectCase(V.Local.sFirstDay)
+	F.Intrinsic.Control.Case(1)
+		'Sunday
+
+	F.Intrinsic.Control.Case(2)
+		'Monday
+		F.Intrinsic.Date.DateAdd("D",-1,V.Local.sSunday,V.Local.sSunday)
+
+	F.Intrinsic.Control.Case(3)
+		'Tuesday
+		F.Intrinsic.Date.DateAdd("D",-2,V.Local.sSunday,V.Local.sSunday)
+
+	F.Intrinsic.Control.Case(4)
+		'Wednesday
+		F.Intrinsic.Date.DateAdd("D",-3,V.Local.sSunday,V.Local.sSunday)
+
+	F.Intrinsic.Control.Case(5)
+		'Thursday
+		F.Intrinsic.Date.DateAdd("D",-4,V.Local.sSunday,V.Local.sSunday)
+
+	F.Intrinsic.Control.Case(6)
+		'Friday
+		F.Intrinsic.Date.DateAdd("D",-5,V.Local.sSunday,V.Local.sSunday)
+
+	F.Intrinsic.Control.Case(7)
+		'Saturday
+		F.Intrinsic.Date.DateAdd("D",1,V.Local.sSunday,V.Local.sSunday)
+
+F.Intrinsic.Control.EndSelect
+
+'Add 6 days to Sunday, Format Saturday and Sunday in M/D/YYYY
+F.Intrinsic.Date.DateAdd("D",6,V.Local.sSunday,V.Local.sSaturday)
+F.Intrinsic.String.Format(V.Local.sSunday,"M/D/YYYY",V.Local.sSunday)
+F.Intrinsic.String.Format(V.Local.sSaturday,"M/D/YYYY",V.Local.sSaturday)
+
+'Format for drop down is Week ##: M/D/YYYY - M/D/YYYY
+V.Local.iFor.Set(0)
+F.Intrinsic.Control.DoUntil(V.Local.bStop,=,True)
+	'Set the week number
+	F.Intrinsic.Math.Add(V.Local.iFor,1,V.Local.sWeekNo)
+	'Build the string
+	F.Intrinsic.String.Build("Week {0}: {1} - {2}",V.Local.sWeekNo,V.Local.sSunday,V.Local.sSaturday,V.Local.sList)
+
+	'Add to the drop down list
+	gui.fMain.ddlWeek.AddItem(V.Local.sList,V.Local.iFor)
+
+	'Set the default day if today is in the range
+	F.Intrinsic.Control.If(V.Ambient.Date,>=,V.Local.sSunday,and,V.Ambient.Date,<=,V.Local.sSaturday)
+		gui.fMain.ddlWeek.ListIndex(V.Local.iFor)
+	F.Intrinsic.Control.EndIf
+
+	'Prep for the next loop
+	F.Intrinsic.Math.Add(V.Local.iFor,1,V.Local.iFor)
+	F.Intrinsic.String.Format(V.Local.sSaturday,"MMDD",V.Local.sEndDate)
+	F.Intrinsic.String.Format(V.Local.sSaturday,"YYYY",V.Local.sEndYear)
+	F.Intrinsic.Control.If(V.Local.sEndDate,=,"1231",or,V.Local.sEndDate,=,"1230")
+		V.Local.bStop.Set(True)
+	F.Intrinsic.Control.ElseIf(V.Local.sEndYear,<>,V.Local.sYear)
+		V.Local.bStop.Set(True)
+	F.Intrinsic.Control.EndIf
+
+	'Add a week to Sunday and Saturday
+	F.Intrinsic.Date.DateAdd("D",7,V.Local.sSunday,V.Local.sSunday)
+	F.Intrinsic.Date.DateAdd("D",6,V.Local.sSunday,V.Local.sSaturday)
+	F.Intrinsic.String.Format(V.Local.sSunday,"M/D/YYYY",V.Local.sSunday)
+	F.Intrinsic.String.Format(V.Local.sSaturday,"M/D/YYYY",V.Local.sSaturday)
+
+F.Intrinsic.Control.Loop
+
+'Add a row if blank
+F.Intrinsic.Control.If(V.DataView.dtMain!dvMain.RowCount,=,0)
+	F.Intrinsic.String.Format(V.Screen.fMain!ddlDate.Text,"MMDDYY",V.Local.sDate)
+	F.Intrinsic.Date.ConvertDString(V.Local.sDate,"MMDDYYYY",V.Local.dDate)
+	F.Intrinsic.Date.Weekday(V.Local.dDate,V.Local.sDay)
+	F.Intrinsic.Control.SelectCase(V.Local.sDay)
+		F.Intrinsic.Control.Case(1)
+			'Sunday
+			V.Local.sDay.Set("Sunday")
+		F.Intrinsic.Control.Case(2)
+			'Monday
+			V.Local.sDay.Set("Monday")
+
+		F.Intrinsic.Control.Case(3)
+			'Tuesday
+			V.Local.sDay.Set("Tuesday")
+
+		F.Intrinsic.Control.Case(4)
+			'Wednesday
+			V.Local.sDay.Set("Wednesday")
+
+		F.Intrinsic.Control.Case(5)
+			'Thursday
+			V.Local.sDay.Set("Thursday")
+
+		F.Intrinsic.Control.Case(6)
+			'Friday
+			V.Local.sDay.Set("Friday")
+
+		F.Intrinsic.Control.Case(7)
+			'Saturday
+			V.Local.sDay.Set("Saturday")
+
+	F.Intrinsic.Control.EndSelect
+	F.Data.DataTable.AddRow("dtMain","WEEK",V.Screen.fMain!ddlWeek.Text,"DATE",V.Local.dDate,"DAY",V.Local.sDay,"ADD","Add","DELETE","Delete","ID",1)
+F.Intrinsic.Control.EndIf
+
+Program.Sub.LoadddlWeek.End
+
+Program.Sub.LoadddlDay.Start
+V.Local.dDate.Declare
+V.Local.iFor.Declare
+V.Local.iIndex.Declare
+V.Local.iRow.Declare
+V.Local.sDate.Declare
+V.Local.sDay.Declare
+V.Local.sDDL.Declare
+V.Local.sFilter.Declare
+V.Local.sSplit.Declare
+V.Local.sToday.Declare
+
+Gui.fMain.ddlDate.ClearItems
+V.Local.iIndex.Set(0)
+
+F.Intrinsic.String.Format(V.Ambient.Date,"M/D/YYYY",V.Local.sToday)
+
+'Load the week days
+'Split the text value on spaces, format is Week ##: M/D/YYYY - M/D/YYYY
+F.Intrinsic.String.Split(V.Screen.fMain!ddlWeek.Text," ",V.Local.sSplit)
+'V.Local.sSplit(2) is Sunday
+V.Local.sDate.Set(V.Local.sSplit(2))
+
+F.Intrinsic.Control.For(V.Local.iFor,0,6,1)
+	Gui.fMain.ddlDate.AddItem(V.Local.sDate,V.Local.iFor)
+	F.Intrinsic.Control.If(V.Local.sDate,=,V.Local.sToday)
+		V.Local.iIndex.Set(V.Local.iFor)
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Date.DateAdd("D",1,V.Local.sDate,V.Local.sDate)
+	F.Intrinsic.String.Format(V.Local.sDate,"M/D/YYYY",V.Local.sDate)
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+Gui.fMain.ddlDate.ListIndex(V.Local.iIndex)
+
+'Set the filter on dvMain to be the current selection
+F.Intrinsic.String.Build("WEEK = '{0}'",V.Screen.fMain!ddlWeek.Text,V.Local.sFilter)
+F.Data.DataView.SetFilter("dtMain","dvMain",V.Local.sFilter)
+
+'Add a row if blank
+F.Intrinsic.Control.If(V.DataView.dtMain!dvMain.RowCount,=,0)
+	V.Local.sDDL.Set(V.Screen.fMain!ddlDate.Text)
+	F.Intrinsic.String.Format(V.Local.sDDL,"MMDDYYYY",V.Local.sDate)
+	F.Intrinsic.Date.ConvertDString(V.Local.sDate,"MMDDYYYY",V.Local.dDate)
+	F.Intrinsic.String.Format(V.Local.sDDL,"MMDDYY",V.Local.sDate)
+	F.Intrinsic.Date.Weekday(V.Local.dDate,V.Local.sDay)
+	F.Intrinsic.Control.SelectCase(V.Local.sDay)
+		F.Intrinsic.Control.Case(1)
+			'Sunday
+			V.Local.sDay.Set("Sunday")
+		F.Intrinsic.Control.Case(2)
+			'Monday
+			V.Local.sDay.Set("Monday")
+
+		F.Intrinsic.Control.Case(3)
+			'Tuesday
+			V.Local.sDay.Set("Tuesday")
+
+		F.Intrinsic.Control.Case(4)
+			'Wednesday
+			V.Local.sDay.Set("Wednesday")
+
+		F.Intrinsic.Control.Case(5)
+			'Thursday
+			V.Local.sDay.Set("Thursday")
+
+		F.Intrinsic.Control.Case(6)
+			'Friday
+			V.Local.sDay.Set("Friday")
+
+		F.Intrinsic.Control.Case(7)
+			'Saturday
+			V.Local.sDay.Set("Saturday")
+
+	F.Intrinsic.Control.EndSelect
+	F.Data.DataTable.AddRow("dtMain","WEEK",V.Screen.fMain!ddlWeek.Text,"DATE",V.Local.dDate,"DAY",V.Local.sDay,"ADD","Add","DELETE","Delete","ID",1)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.For(V.Local.iFor,0,V.DataView.dtMain!dvMain.RowCount--,1)
+	'F.Intrinsic.Math.Add(V.Local.iFor,1,V.Local.iRow)
+	V.Local.iRow.Set(V.Local.iFor)
+	Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","HOURS_VT",V.Local.iIndex)
+	Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Local.iRow,"Locked",False)
+	Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","DAYS",V.Local.iIndex)
+	Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Local.iRow,"Locked",False)
+	F.Intrinsic.Control.If(V.DataView.dtMain!dvMain(V.Local.iFor).DAYS!FieldValTrim,<>,"")
+		Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","HOURS_VT",V.Local.iIndex)
+		Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Local.iRow,"Locked",True)
+	F.Intrinsic.Control.ElseIf(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_VT!FieldValTrim,<>,"")
+		Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","DAYS",V.Local.iIndex)
+		Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Local.iRow,"Locked",True)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+Program.Sub.LoadddlDay.End
+
+Program.Sub.LoadDtMain.Start
+F.Intrinsic.Control.If(V.DataTable.dtMain.Exists,=,True)
+	F.Data.DataTable.DeleteRow("dtMain")
+	F.Data.DataTable.Close("dtMain")
+F.Intrinsic.Control.EndIf
+
+
+F.Data.DataTable.CreateFromSQL("dtMain","con","select rtrim(WEEK) as WEEK, DATE, rtrim(DAY) as DAY, rtrim(CUSTOMER) as CUSTOMER, DAYS, HOURS_VT, HOURS_RD, HOURS_SALES, HOURS_NB, RATE, EXTENSION, rtrim(NOTES) as NOTES, ID from GAB_4733_TIME",True)
+
+F.Data.DataTable.AddColumn("dtMain","ADD","String","Add")
+F.Data.DataTable.AddColumn("dtMain","DELETE","String","Delete")
+
+
+Program.Sub.LoadDtMain.End
+
+Program.Sub.LoadGvMain.Start
+V.Local.iIndex.Declare
+V.Local.sColor.Declare
+V.Local.sDefault.Declare
+V.Local.sDT.Declare
+V.Local.sDV.Declare
+V.Local.sGV.Declare
+V.Local.sProperty.Declare
+
+V.Local.sDT.Set("dtMain")
+V.Local.sDV.Set("dvMain")
+V.Local.sGV.Set("gvMain")
+
+F.Data.DataView.Create("dtMain","dvMain")
+F.Data.DataView.SetSort("dtMain","dvMain","DATE ASC, ID ASC")
+
+Gui.fMain.GsGcMain.AddGridviewFromDataview(V.Local.sGV,V.Local.sDT,V.Local.sDV)
+
+GUI.fMain.GsGcMain.SetGridviewProperty("gvMAIN","AllowAddRows",False)
+GUI.fMain.GsGcMain.SetGridviewProperty("gvMAIN","AllowDeleteRows",False)
+GUI.fMain.GsGcMain.SetGridviewProperty("gvMAIN","Editable",True)
+
+'ALLOW EDIT
+V.Local.sProperty.Set("AllowEdit")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,False)
+
+'READ ONLY
+V.Local.sProperty.Set("ReadOnly")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,True)
+
+
+'HEADER FONT BOLD
+V.Local.sProperty.Set("HeaderFontBold")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,True)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,True)
+
+
+'HEADER BACK COLOR
+V.Local.sProperty.Set("HeaderBackColor")
+V.Local.sColor.Set("MediumSeaGreen")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,V.Local.sColor)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,V.Local.sColor)
+
+
+'VISIBLE INDEX
+V.Local.sProperty.Set("VisibleIndex")
+V.Local.iIndex.Set(0)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,V.Local.iIndex)
+V.Local.iIndex.Set(V.Local.iIndex.++)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,V.Local.iIndex)
+
+
+'TAB STOP
+V.Local.sProperty.Set("TabStop")
+
+'CAPTION
+V.Local.sProperty.Set("Caption")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,"Week")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,"Date")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,"Day")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,"Customer")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,"Consulting Days")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,"VT Hours")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,"R&D Hours")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,"Sales Hours")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,"Non-Billable Hours")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,"Rate")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,"Extension")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,"Notes")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty," ")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty," ")
+
+'MIN WIDTH
+V.Local.sProperty.Set("MinWidth")
+V.Local.sDefault.Set("70")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,150)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAY",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","CUSTOMER",V.Local.sProperty,150)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DAYS",V.Local.sProperty,100)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_VT",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_RD",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_SALES",V.Local.sProperty,80)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","HOURS_NB",V.Local.sProperty,120)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","NOTES",V.Local.sProperty,300)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,50)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,50)
+
+
+'MAX WIDTH
+V.Local.sProperty.Set("MaxWidth")
+V.Local.sDefault.Set("100")
+
+
+'CELL H ALIGNMENT
+V.Local.sProperty.Set("CellHAlignment")
+V.Local.sDefault.Set("Center")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,V.Local.sDefault)
+
+'CELL FONT BOLD
+V.Local.sProperty.Set("CellFontBold")
+V.Local.sDefault.Set("True")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,V.Local.sDefault)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,V.Local.sDefault)
+
+'CELL BACK COLOR
+V.Local.sProperty.Set("CellBackColor")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","ADD",V.Local.sProperty,"Lime")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DELETE",V.Local.sProperty,"Red")
+
+'DISPLAY CUSTOM NUMERIC
+V.Local.sProperty.Set("DisplayCustomNumeric")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","RATE",V.Local.sProperty,"$0.00")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","EXTENSION",V.Local.sProperty,"$0.00")
+
+'VISIBLE
+V.Local.sProperty.Set("Visible")
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","WEEK",V.Local.sProperty,False)
+GUI.fMain.GsGcMain.SetColumnProperty("gvMain","ID",V.Local.sProperty,False)
+
+
+'DATE FORMAT FOR DATE
+GUI.fMain.GsGcMain.SetColumnProperty("gvMAIN","DATE","DisplayCustomDateTime","d")
+
+'COLUMN EDIT FOR UOM DROP DOWN LIST
+'GUI.fMain.GsGcMain.ColumnEdit("gvMAIN","UOM","DropDownList","IN*!*MM")
+
+'SUMMARY OF EXTENSION, DAYS, HOURS_VT, HOURS_RD, HOURS_SALES, HOURS_NB
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","EXTENSION","Total Dollars","Sum","$",,"0.00")
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","DAYS","Total Days","Sum",,,"0.0#")
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","HOURS_VT","Total VT Hours","Sum",,,"0.0#")
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","HOURS_RD","Total R&D Hours","Sum",,,"0.0#")
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","HOURS_SALES","Total Sales Hours","Sum",,,"0.0#")
+Gui.fMain.GsGcMain.AddSummaryItem("gvMAIN","HOURS_NB","Total Non-Billable Hours","Sum",,,"0.0#")
+
+Gui.fMain.GsGCMain.MainView(V.Local.sGV)
+Program.Sub.LoadGvMain.End
+
+Program.Sub.Refresh.Start
+Program.Sub.Refresh.End
+
+Program.Sub.GsGcMain_CellValueChanged.Start
+V.Local.iIndex.Declare
+V.Local.sDay.Declare
+V.Local.sSaturday.Declare
+V.Local.sSplit.Declare
+V.Local.sSunday.Declare
+
+V.Global.bSaved.Set(False)
+
+Gui.fMain..Enabled(0)
+F.Intrinsic.Control.BlockEvents
+
+F.Intrinsic.Control.SelectCase(V.Args.Column)
+	F.Intrinsic.Control.Case("DATE")
+		'Verify that the date is in the week
+		'Split the text value on spaces, format is Week ##: M/D/YYYY - M/D/YYYY
+		F.Intrinsic.String.Split(V.Screen.fMain!ddlWeek.Text," ",V.Local.sSplit)
+		'V.Local.sSplit(2) is Sunday
+		V.Local.sSunday.Set(V.Local.sSplit(2))
+		'V.Local.sSplit(4) is Saturday
+		V.Local.sSaturday.Set(V.Local.sSplit(4))
+		F.Intrinsic.Control.If(V.DataTable.dtMain(V.Args.RowIndex).DATE!FieldVal,>=,V.Local.sSunday,and,V.DataTable.dtMain(V.Args.RowIndex).DATE!FieldVal,<=,V.Local.sSaturday)
+			'Date is in the week so calculate the weekday
+			F.Intrinsic.Date.Weekday(V.DataTable.dtMain(V.Args.RowIndex).DATE!FieldVal,V.Local.sDay)
+			F.Intrinsic.Control.SelectCase(V.Local.sDay)
+				F.Intrinsic.Control.Case(1)
+					'Sunday
+					V.Local.sDay.Set("Sunday")
+				F.Intrinsic.Control.Case(2)
+					'Monday
+					V.Local.sDay.Set("Monday")
+
+				F.Intrinsic.Control.Case(3)
+					'Tuesday
+					V.Local.sDay.Set("Tuesday")
+
+				F.Intrinsic.Control.Case(4)
+					'Wednesday
+					V.Local.sDay.Set("Wednesday")
+
+				F.Intrinsic.Control.Case(5)
+					'Thursday
+					V.Local.sDay.Set("Thursday")
+
+				F.Intrinsic.Control.Case(6)
+					'Friday
+					V.Local.sDay.Set("Friday")
+
+				F.Intrinsic.Control.Case(7)
+					'Saturday
+					V.Local.sDay.Set("Saturday")
+
+			F.Intrinsic.Control.EndSelect
+			F.Data.DataTable.SetValue("dtMain",V.Args.RowIndex,"DAY",V.Local.sDay)
+
+		F.Intrinsic.Control.Else
+			'Notify the user that the date is not in the week
+			F.Intrinsic.UI.Msgbox("Date Is Not In The Selected Week!","Time Sheet")
+			F.Data.DataTable.SetValue("dtMain",V.Args.RowIndex,"DATE",V.Screen.fMain!ddlDate.Text)
+		F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Case("DAYS")
+		'Set the VT hours cell as read only
+		Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","HOURS_VT",V.Local.iIndex)
+		Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Args.RowIndex,"Locked",True)
+		'Calculate the extension
+		F.Intrinsic.Control.CallSub(calculateextension,"Row",V.Args.RowIndex)
+		F.Intrinsic.Control.CallSub(loadrevenue)
+	F.Intrinsic.Control.Case("HOURS_VT")
+		'Set the days cell as read only
+		Gui.fMain.GsGcMain.GetColumnIndexByName("gvMain","DAYS",V.Local.iIndex)
+		Gui.fMain.GsGcMain.SetCellProperty("gvMain",V.Local.iIndex,V.Args.RowIndex,"Locked",True)
+		'Calculate the extension
+		F.Intrinsic.Control.CallSub(calculateextension,"Row",V.Args.RowIndex)
+		F.Intrinsic.Control.CallSub(loadrevenue)
+	F.Intrinsic.Control.Case("HOURS_RD")
+
+	F.Intrinsic.Control.Case("HOURS_SALES")
+
+	F.Intrinsic.Control.Case("HOURS_NB")
+
+	F.Intrinsic.Control.Case("RATE")
+		'Calculate the extension
+		F.Intrinsic.Control.CallSub(calculateextension,"Row",V.Args.RowIndex)
+		F.Intrinsic.Control.CallSub(loadrevenue)
+F.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.UnBlockEvents
+Gui.fMain..Enabled(1)
+Program.Sub.GsGcMain_CellValueChanged.End
+
+Program.Sub.GsGcMain_RowCellClick.Start
+V.Local.dDate.Declare
+V.Local.iID.Declare
+V.Local.sDate.Declare
+V.Local.sDay.Declare
+V.Local.sFilter.Declare
+
+F.Intrinsic.Control.SelectCase(V.Args.Column)
+	F.Intrinsic.Control.Case("ADD")
+		V.Global.bSaved.Set(False)
+		V.Local.sDate.Set(V.Screen.fMain!ddlDate.Text)
+		F.Intrinsic.String.Format(V.Local.sDate,"MM/DD/YYYY",V.Local.sDate)
+		F.Intrinsic.Date.ConvertDString(V.Local.sDate,"MMDDYYYY",V.Local.dDate)
+		F.Intrinsic.String.Format(V.Local.sDate,"MMDDYY",V.Local.sDate)
+		F.Intrinsic.Date.Weekday(V.Local.dDate,V.Local.sDay)
+		F.Intrinsic.Control.SelectCase(V.Local.sDay)
+			F.Intrinsic.Control.Case(1)
+				'Sunday
+				V.Local.sDay.Set("Sunday")
+			F.Intrinsic.Control.Case(2)
+				'Monday
+				V.Local.sDay.Set("Monday")
+
+			F.Intrinsic.Control.Case(3)
+				'Tuesday
+				V.Local.sDay.Set("Tuesday")
+
+			F.Intrinsic.Control.Case(4)
+				'Wednesday
+				V.Local.sDay.Set("Wednesday")
+
+			F.Intrinsic.Control.Case(5)
+				'Thursday
+				V.Local.sDay.Set("Thursday")
+
+			F.Intrinsic.Control.Case(6)
+				'Friday
+				V.Local.sDay.Set("Friday")
+
+			F.Intrinsic.Control.Case(7)
+				'Saturday
+				V.Local.sDay.Set("Saturday")
+
+		F.Intrinsic.Control.EndSelect
+		'Get the current max id
+		F.Intrinsic.String.Build("WEEK = '{0}'",V.Screen.fMain!ddlWeek.Text,V.Local.sFilter)
+		F.Data.DataTable.Compute("dtMain","MAX(ID)",V.Local.sFilter,V.Local.iID)
+		F.Intrinsic.Math.Add(V.Local.iID,1,V.Local.iID)
+		F.Data.DataTable.AddRow("dtMain","WEEK",V.Screen.fMain!ddlWeek.Text,"DATE",V.Local.dDate,"DAY",V.Local.sDay,"ADD","Add","DELETE","Delete","ID",V.Local.iID)
+
+	F.Intrinsic.Control.Case("DELETE")
+		V.Global.bSaved.Set(False)
+		F.Data.DataTable.DeleteRow("dtMain",V.Args.RowIndex)
+		F.Intrinsic.Control.If(V.DataView.dtMain!dvMain.RowCount,>=,1)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Format(V.Screen.fMain!ddlDate.Text,"MMDDYY",V.Local.sDate)
+			F.Intrinsic.Date.ConvertDString(V.Local.sDate,"MMDDYYYY",V.Local.dDate)
+			F.Intrinsic.Date.Weekday(V.Local.dDate,V.Local.sDay)
+			F.Intrinsic.Control.SelectCase(V.Local.sDay)
+				F.Intrinsic.Control.Case(1)
+					'Sunday
+					V.Local.sDay.Set("Sunday")
+				F.Intrinsic.Control.Case(2)
+					'Monday
+					V.Local.sDay.Set("Monday")
+
+				F.Intrinsic.Control.Case(3)
+					'Tuesday
+					V.Local.sDay.Set("Tuesday")
+
+				F.Intrinsic.Control.Case(4)
+					'Wednesday
+					V.Local.sDay.Set("Wednesday")
+
+				F.Intrinsic.Control.Case(5)
+					'Thursday
+					V.Local.sDay.Set("Thursday")
+
+				F.Intrinsic.Control.Case(6)
+					'Friday
+					V.Local.sDay.Set("Friday")
+
+				F.Intrinsic.Control.Case(7)
+					'Saturday
+					V.Local.sDay.Set("Saturday")
+
+			F.Intrinsic.Control.EndSelect
+			F.Data.DataTable.AddRow("dtMain","WEEK",V.Screen.fMain!ddlWeek.Text,"DATE",V.Local.dDate,"DAY",V.Local.sDay,"ADD","Add","DELETE","Delete","ID",1)
+		F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndSelect
+Program.Sub.GsGcMain_RowCellClick.End
+
+Program.Sub.CalculateExtension.Start
+V.Local.fExtension.Declare
+V.Local.iRow.Declare
+
+V.Local.iRow.Set(V.Args.Row)
+
+F.Intrinsic.Control.If(V.DataTable.dtMain(V.Local.iRow).DAYS!FieldValFloat,>,0)
+	F.Intrinsic.Math.Mult(V.DataTable.dtMain(V.Local.iRow).DAYS!FieldValFloat,V.DataTable.dtMain(V.Local.iRow).RATE!FieldValFloat,V.Local.fExtension)
+	F.Data.DataTable.SetValue("dtMain",V.Local.iRow,"EXTENSION",V.Local.fExtension)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Math.Mult(V.DataTable.dtMain(V.Local.iRow).HOURS_VT!FieldValFloat,V.DataTable.dtMain(V.Local.iRow).RATE!FieldValFloat,V.Local.fExtension)
+	F.Data.DataTable.SetValue("dtMain",V.Local.iRow,"EXTENSION",V.Local.fExtension)
+F.Intrinsic.Control.EndIf
+
+Program.Sub.CalculateExtension.End
+
+Program.Sub.cmdSave_Click.Start
+Gui.fMain..Enabled(0)
+
+F.Intrinsic.Control.If(V.DataTable.dtToGAB.Exists,=,True)
+	F.Data.DataTable.DeleteRow("dtToGAB")
+	F.Data.DataTable.Close("dtToGAB")
+F.Intrinsic.Control.EndIf
+
+
+F.Data.DataTable.Clone("dtMain","dtToGAB",True)
+F.Data.DataTable.Merge("dtMain","dtToGAB",True,2)
+
+F.Data.DataTable.RemoveColumn("dtToGAB","ADD")
+F.Data.DataTable.RemoveColumn("dtToGAB","DELETE")
+
+F.Data.DataTable.SaveToDB("dtToGAB","con","GAB_4733_TIME","WEEK*!*ID",7)
+
+F.Data.DataTable.DeleteRow("dtToGAB")
+F.Data.DataTable.Close("dtToGAB")
+
+F.Data.DataTable.AcceptChanges("dtMain")
+
+V.Global.bSaved.Set(True)
+
+Gui.fMain..Enabled(1)
+
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.cmdExport_Click.Start
+V.Local.bInstr.Declare
+V.Local.fDays.Declare
+V.Local.fNB.Declare
+V.Local.fRD.Declare
+V.Local.fSales.Declare
+V.Local.fVT.Declare
+V.Local.iFor.Declare
+V.Local.sCustomers.Declare
+V.Local.sCustomersVT.Declare
+V.Local.sData.Declare
+V.Local.sFile.Declare
+V.Local.sFilter.Declare
+V.Local.sSplit.Declare
+V.Local.sWeek.Declare
+
+'Save the data
+F.Intrinsic.Control.CallSub(cmdsave_click)
+
+'Loop Through dvMain and populate the variables
+F.Intrinsic.Control.For(V.Local.iFor,0,V.DataView.dtMain!dvMain.RowCount--,1)
+	F.Intrinsic.Math.Add(V.DataView.dtMain!dvMain(V.Local.iFor).DAYS!FieldValFloat,V.Local.fDays,V.Local.fDays)
+	F.Intrinsic.Math.Add(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_NB!FieldValFloat,V.Local.fNB,V.Local.fNB)
+	F.Intrinsic.Math.Add(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_RD!FieldValFloat,V.Local.fRD,V.Local.fRD)
+	F.Intrinsic.Math.Add(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_SALES!FieldValFloat,V.Local.fSales,V.Local.fSales)
+	F.Intrinsic.Math.Add(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_VT!FieldValFloat,V.Local.fVT,V.Local.fVT)
+	F.Intrinsic.Control.If(V.Local.sCustomers.Trim,=,"")
+		F.Intrinsic.Control.If(V.DataView.dtMain!dvMain(V.Local.iFor).DAYS!FieldValFloat,>,0)
+			V.Local.sCustomers.Set(V.DataView.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.DataView.dtMain!dvMain(V.Local.iFor).DAYS!FieldValFloat,>,0)
+			F.Intrinsic.String.IsInString(V.Local.sCustomers,V.DataTable.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim,True,V.Local.bInstr)
+			F.Intrinsic.Control.If(V.Local.bInstr,=,False)
+				F.Intrinsic.String.Concat(V.Local.sCustomers,"*!*",V.DataView.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim,V.Local.sCustomers)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.If(V.Local.sCustomersVT.Trim,=,"")
+		F.Intrinsic.Control.If(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_VT!FieldValFloat,>,0)
+			V.Local.sCustomersVT.Set(V.DataView.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.DataView.dtMain!dvMain(V.Local.iFor).HOURS_VT!FieldValFloat,>,0)
+			F.Intrinsic.String.IsInString(V.Local.sCustomersVT,V.DataTable.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim,True,V.Local.bInstr)
+			F.Intrinsic.Control.If(V.Local.bInstr,=,False)
+				F.Intrinsic.String.Concat(V.Local.sCustomersVT,"*!*",V.DataView.dtMain!dvMain(V.Local.iFor).CUSTOMER!FieldValTrim,V.Local.sCustomersVT)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+F.Intrinsic.String.Split(V.Screen.fMain!ddlWeek.Text," ",V.Local.sSplit)
+F.Intrinsic.String.Split(V.Local.sSplit(1),":",V.Local.sWeek)
+
+'Create a text file with the following format
+'Week
+'Consulting Days
+'Consulting Customers
+'VT Hours
+'VT Customers
+'Time for R&D
+'Time for Sales
+'Time for Consulting, Non-Billable
+F.Intrinsic.String.Replace(V.Local.sCustomers,"*!*",", ",V.Local.sCustomers)
+F.Intrinsic.String.Replace(V.Local.sCustomersVT,"*!*",", ",V.Local.sCustomersVT)
+F.Intrinsic.String.Build("Week: {1}{0}{0}Consulting Days:{0}{2}{0}{0}Consulting Customers:{0}{3}{0}{0}VT Hours:{0}{4}{0}{0}VT Customers:{0}{5}{0}{0}Time for R&D:{0}{6}{0}{0}Time for Sales:{0}{7}{0}{0}Consulting Non-billable:{0}{8}{0}",V.Ambient.NewLine,V.Local.sWeek,V.Local.fDays,V.Local.sCustomers,V.Local.fVT,V.Local.sCustomersVT,V.Local.fRD,V.Local.fSales,V.Local.fNB,V.Local.sData)
+
+F.Intrinsic.String.Build("{0}\Week_{1}.txt",V.Caller.TempDir,V.Local.sWeek(0),V.Local.sFile)
+
+F.Intrinsic.File.String2File(V.Local.sFile,V.Local.sData)
+
+F.Intrinsic.Task.ShellExec(0,"",V.Local.sFile,"","",1)
+
+
+Program.Sub.cmdExport_Click.End
+
+Program.Sub.LoadRevenue.Start
+V.Local.sDate.Declare
+V.Local.sMonth.Declare
+V.Local.sSQL.Declare
+V.Local.sTotal.Declare
+V.Local.sYear.Declare
+
+'Calculate YTD
+F.Intrinsic.String.Format(V.Ambient.Date,"YYYY",V.Local.sYear)
+F.Intrinsic.String.Build("DATE >= '{0}-01-01'",V.Local.sYear,V.Local.sSQL)
+F.Data.DataTable.Compute("dtMAIN","sum(EXTENSION)",V.Local.sSQL,V.Local.sTotal)
+F.Intrinsic.String.Format(V.Local.sTotal,"$###,###,##0.00",V.Local.sTotal)
+Gui.fMain.txtRevenueYTD.Text(V.Local.sTotal)
+
+'Calculate MTD
+F.Intrinsic.String.Format(V.Ambient.Date,"MM",V.Local.sMonth)
+F.Intrinsic.String.Build("DATE >= '{0}-{1}-01'",V.Local.sYear,V.Local.sMonth,V.Local.sSQL)
+F.Data.DataTable.Compute("dtMAIN","sum(EXTENSION)",V.Local.sSQL,V.Local.sTotal)
+F.Intrinsic.String.Format(V.Local.sTotal,"$###,###,##0.00",V.Local.sTotal)
+Gui.fMain.txtRevenueMTD.Text(V.Local.sTotal)
+
+Program.Sub.LoadRevenue.End
+
+Program.Sub.Comments.Start
+${$0$}$CONSULTING TIME TRACKER$}$JWERTH$}$9/5/2017 10:36:28 AM$}$False
+Program.Sub.Comments.End
